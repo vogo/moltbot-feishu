@@ -116,6 +116,9 @@ go build -o moltbot-feishu .
    - 添加事件: `im.message.receive_v1`
 6. 发布应用版本
 
+
+飞书应用配置范例: [查看](https://my.feishu.cn/wiki/Hl17wUfSQizfSikXRc7c1xRzncb)
+
 ### 2. 配置 Moltbot
 
 确保 Moltbot Gateway 已运行，配置文件通常位于 `~/.moltbot/moltbot.json`：
