@@ -22,41 +22,41 @@ const (
 	SeenTTL = 10 * time.Minute
 )
 
-type MessageHandler func(ctx context.Context, chatID, text string) (string, error)
+// StreamHandler 流式消息处理器
+// reply 回调用于发送/更新回复，可多次调用
+// 第一次调用创建消息，后续调用更新消息
+type StreamHandler func(ctx context.Context, chatID, text string, reply func(text string) error) error
 
 type Client struct {
 	appID     string
 	appSecret string
 	larkCli   *lark.Client
 
-	handler MessageHandler
+	handler StreamHandler
 
 	// 去重
 	seenMsgs    map[string]time.Time
 	seenMsgLock sync.Mutex
-
-	thinkingThresholdMs int
 }
 
 type TextContent struct {
 	Text string `json:"text"`
 }
 
-func NewClient(appID, appSecret string, thinkingMs int) *Client {
+func NewClient(appID, appSecret string) *Client {
 	cli := lark.NewClient(appID, appSecret,
 		lark.WithLogLevel(larkcore.LogLevelInfo),
 	)
 
 	return &Client{
-		appID:               appID,
-		appSecret:           appSecret,
-		larkCli:             cli,
-		seenMsgs:            make(map[string]time.Time),
-		thinkingThresholdMs: thinkingMs,
+		appID:     appID,
+		appSecret: appSecret,
+		larkCli:   cli,
+		seenMsgs:  make(map[string]time.Time),
 	}
 }
 
-func (c *Client) SetHandler(handler MessageHandler) {
+func (c *Client) SetHandler(handler StreamHandler) {
 	c.handler = handler
 }
 
@@ -213,60 +213,20 @@ func (c *Client) processMessage(ctx context.Context, chatID, text string) {
 		return
 	}
 
-	var placeholderID string
-	var done bool
-	var mu sync.Mutex
-
-	// 思考中提示定时器
-	var timer *time.Timer
-	if c.thinkingThresholdMs > 0 {
-		timer = time.AfterFunc(time.Duration(c.thinkingThresholdMs)*time.Millisecond, func() {
-			mu.Lock()
-			defer mu.Unlock()
-			if done {
-				return
-			}
-			id, err := c.sendMessage(ctx, chatID, "正在思考…")
-			if err == nil {
-				placeholderID = id
-			}
-		})
+	// 创建回复回调 - 每次调用发送一条新消息
+	replyFunc := func(content string) error {
+		content = strings.TrimSpace(content)
+		if content == "" {
+			return nil
+		}
+		_, err := c.sendMessage(ctx, chatID, content)
+		return err
 	}
 
-	// 调用处理器获取回复
-	reply, err := c.handler(ctx, chatID, text)
-
-	// 停止定时器
-	if timer != nil {
-		timer.Stop()
-	}
-
-	mu.Lock()
-	done = true
-	currentPlaceholder := placeholderID
-	mu.Unlock()
-
-	if err != nil {
+	// 调用流式处理器
+	if err := c.handler(ctx, chatID, text, replyFunc); err != nil {
 		log.Printf("处理消息失败: %v", err)
-		reply = fmt.Sprintf("处理消息时发生错误: %v", err)
-	}
-
-	// 跳过空回复或 NO_REPLY
-	if reply == "" || reply == "NO_REPLY" {
-		if currentPlaceholder != "" {
-			c.deleteMessage(ctx, currentPlaceholder)
-		}
-		return
-	}
-
-	// 发送或更新回复
-	if currentPlaceholder != "" {
-		if err := c.updateMessage(ctx, currentPlaceholder, reply); err != nil {
-			// 更新失败,尝试发送新消息
-			c.sendMessage(ctx, chatID, reply)
-		}
-	} else {
-		c.sendMessage(ctx, chatID, reply)
+		c.sendMessage(ctx, chatID, fmt.Sprintf("处理消息时发生错误: %v", err))
 	}
 }
 
@@ -296,37 +256,3 @@ func (c *Client) sendMessage(ctx context.Context, chatID, text string) (string, 
 	return "", nil
 }
 
-func (c *Client) updateMessage(ctx context.Context, msgID, text string) error {
-	content, _ := json.Marshal(TextContent{Text: text})
-
-	req := larkim.NewPatchMessageReqBuilder().
-		MessageId(msgID).
-		Body(larkim.NewPatchMessageReqBodyBuilder().
-			Content(string(content)).
-			Build()).
-		Build()
-
-	resp, err := c.larkCli.Im.V1.Message.Patch(ctx, req)
-	if err != nil {
-		return err
-	}
-	if !resp.Success() {
-		return fmt.Errorf("更新消息失败: %s", resp.Msg)
-	}
-	return nil
-}
-
-func (c *Client) deleteMessage(ctx context.Context, msgID string) error {
-	req := larkim.NewDeleteMessageReqBuilder().
-		MessageId(msgID).
-		Build()
-
-	resp, err := c.larkCli.Im.V1.Message.Delete(ctx, req)
-	if err != nil {
-		return err
-	}
-	if !resp.Success() {
-		return fmt.Errorf("删除消息失败: %s", resp.Msg)
-	}
-	return nil
-}

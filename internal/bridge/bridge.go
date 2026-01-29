@@ -19,7 +19,7 @@ type Bridge struct {
 }
 
 func New(cfg *config.Config) *Bridge {
-	feishuCli := feishu.NewClient(cfg.FeishuAppID, cfg.FeishuAppSecret, cfg.ThinkingThresholdMs)
+	feishuCli := feishu.NewClient(cfg.FeishuAppID, cfg.FeishuAppSecret)
 	moltbotCli := moltbot.NewClient(cfg.GatewayPort, cfg.GatewayToken, cfg.MoltbotAgentID)
 
 	return &Bridge{
@@ -57,7 +57,7 @@ func (b *Bridge) Close() {
 	b.moltbotCli.Close()
 }
 
-func (b *Bridge) handleMessage(ctx context.Context, chatID, text string) (string, error) {
+func (b *Bridge) handleMessage(ctx context.Context, chatID, text string, reply func(string) error) error {
 	sessionKey := fmt.Sprintf("feishu:%s", chatID)
 
 	log.Printf("收到消息: chatID=%s, text=%s", chatID, truncate(text, 50))
@@ -65,31 +65,59 @@ func (b *Bridge) handleMessage(ctx context.Context, chatID, text string) (string
 	// 发送消息到 Moltbot
 	runID, deltaCh, errCh, err := b.moltbotCli.SendMessage(ctx, sessionKey, text)
 	if err != nil {
-		return "", fmt.Errorf("发送到 Moltbot 失败: %w", err)
+		return fmt.Errorf("发送到 Moltbot 失败: %w", err)
 	}
 
 	log.Printf("Moltbot 开始处理: runID=%s", runID)
 
-	// 收集流式响应
-	var reply strings.Builder
-	timeout := time.After(5 * time.Minute)
+	var accumulated strings.Builder
+	globalTimeout := time.After(5 * time.Minute)
+	idleTimer := time.NewTimer(2 * time.Second)
+	idleTimer.Stop() // 初始停止，收到第一个 delta 后启动
+
+	// 发送累积的消息
+	sendAccumulated := func() {
+		content := strings.TrimSpace(accumulated.String())
+		if content != "" {
+			if err := reply(content); err != nil {
+				log.Printf("发送回复失败: %v", err)
+			}
+			accumulated.Reset()
+		}
+	}
 
 	for {
 		select {
 		case delta, ok := <-deltaCh:
 			if !ok {
-				// 流结束
-				result := strings.TrimSpace(reply.String())
-				log.Printf("Moltbot 回复完成: %s", truncate(result, 100))
-				return result, nil
+				// 流结束，发送剩余内容
+				idleTimer.Stop()
+				sendAccumulated()
+				log.Printf("Moltbot 回复完成")
+				return nil
 			}
-			reply.WriteString(delta)
+			// 累积内容
+			accumulated.WriteString(delta)
+			// 重置 5 秒定时器
+			idleTimer.Stop()
+			idleTimer = time.NewTimer(2 * time.Second)
+
+		case <-idleTimer.C:
+			// 5 秒没有新 delta，发送累积的内容
+			sendAccumulated()
+
 		case err := <-errCh:
-			return "", err
-		case <-timeout:
-			return "", fmt.Errorf("等待 Moltbot 响应超时")
+			idleTimer.Stop()
+			return err
+
+		case <-globalTimeout:
+			idleTimer.Stop()
+			sendAccumulated()
+			return fmt.Errorf("等待 Moltbot 响应超时")
+
 		case <-ctx.Done():
-			return "", ctx.Err()
+			idleTimer.Stop()
+			return ctx.Err()
 		}
 	}
 }

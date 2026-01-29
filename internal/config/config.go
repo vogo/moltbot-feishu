@@ -19,9 +19,6 @@ type Config struct {
 	MoltbotAgentID    string
 	GatewayPort       int
 	GatewayToken      string
-
-	// 行为配置
-	ThinkingThresholdMs int
 }
 
 type MoltbotConfig struct {
@@ -68,7 +65,6 @@ type Flags struct {
 	AgentID          string
 	GatewayPort      int
 	GatewayToken     string
-	ThinkingMs       int
 	Version          bool
 }
 
@@ -82,7 +78,6 @@ func RegisterFlags() *Flags {
 	flag.StringVar(&f.AgentID, "agent-id", "", "Moltbot Agent ID")
 	flag.IntVar(&f.GatewayPort, "gateway-port", 0, "Gateway 端口")
 	flag.StringVar(&f.GatewayToken, "gateway-token", "", "Gateway 认证 Token")
-	flag.IntVar(&f.ThinkingMs, "thinking-ms", 0, "'正在思考...' 提示延迟毫秒数")
 	flag.BoolVar(&f.Version, "version", false, "显示版本号")
 	return f
 }
@@ -165,12 +160,6 @@ func Load(f *Flags) (*Config, error) {
 
 	if cfg.GatewayToken == "" {
 		return nil, fmt.Errorf("Gateway Token 未配置，请设置 --gateway-token、MOLTBOT_GATEWAY_TOKEN 或在 moltbot.json 中配置")
-	}
-
-	// 思考延迟
-	cfg.ThinkingThresholdMs = f.ThinkingMs
-	if cfg.ThinkingThresholdMs == 0 {
-		cfg.ThinkingThresholdMs = getEnvIntOrDefault("FEISHU_THINKING_THRESHOLD_MS", 2500)
 	}
 
 	return cfg, nil

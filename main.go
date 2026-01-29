@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/vogo/moltbot-feishu/internal/bridge"
 	"github.com/vogo/moltbot-feishu/internal/config"
@@ -50,6 +51,11 @@ func main() {
 		sig := <-sigCh
 		log.Printf("收到信号 %v，正在退出...", sig)
 		cancel()
+
+		// 强制退出: 3秒后如果还未退出则强制终止
+		time.Sleep(3 * time.Second)
+		log.Println("强制退出")
+		os.Exit(1)
 	}()
 
 	// 创建并运行桥接
