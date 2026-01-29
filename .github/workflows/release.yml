@@ -36,9 +36,6 @@ jobs:
           - os: linux
             arch: arm64
             ext: ''
-          - os: linux
-            arch: '386'
-            ext: ''
           # macOS
           - os: darwin
             arch: amd64
@@ -52,9 +49,6 @@ jobs:
             ext: '.exe'
           - os: windows
             arch: arm64
-            ext: '.exe'
-          - os: windows
-            arch: '386'
             ext: '.exe'
 
     steps:
@@ -158,12 +152,10 @@ jobs:
             |------|------|----------|
             | Linux | amd64 | `moltbot-feishu-linux-amd64.tar.gz` |
             | Linux | arm64 | `moltbot-feishu-linux-arm64.tar.gz` |
-            | Linux | 386 | `moltbot-feishu-linux-386.tar.gz` |
             | macOS | amd64 (Intel) | `moltbot-feishu-darwin-amd64.tar.gz` |
             | macOS | arm64 (Apple Silicon) | `moltbot-feishu-darwin-arm64.tar.gz` |
             | Windows | amd64 | `moltbot-feishu-windows-amd64.zip` |
             | Windows | arm64 | `moltbot-feishu-windows-arm64.zip` |
-            | Windows | 386 | `moltbot-feishu-windows-386.zip` |
 
             ### 快速开始
 

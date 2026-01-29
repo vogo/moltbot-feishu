@@ -49,12 +49,10 @@
 |------|------|--------|
 | Linux | amd64 | `moltbot-feishu-linux-amd64.tar.gz` |
 | Linux | arm64 | `moltbot-feishu-linux-arm64.tar.gz` |
-| Linux | 386 | `moltbot-feishu-linux-386.tar.gz` |
 | macOS | Intel | `moltbot-feishu-darwin-amd64.tar.gz` |
 | macOS | Apple Silicon | `moltbot-feishu-darwin-arm64.tar.gz` |
 | Windows | amd64 | `moltbot-feishu-windows-amd64.zip` |
 | Windows | arm64 | `moltbot-feishu-windows-arm64.zip` |
-| Windows | 386 | `moltbot-feishu-windows-386.zip` |
 
 ```bash
 # Linux/macOS 示例
