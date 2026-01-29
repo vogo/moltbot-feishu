@@ -2,6 +2,12 @@
 
 一个 Go 语言实现的 Moltbot (原 Clawdbot) 与飞书消息平台的桥接服务。
 
+-------------
+
+飞书应用配置范例: [查看](https://my.feishu.cn/wiki/Hl17wUfSQizfSikXRc7c1xRzncb)
+
+-------------
+
 ## 特性
 
 - **无需公网服务器**: 利用飞书 WebSocket 长连接，无需公网 IP、域名或 HTTPS 证书
@@ -10,6 +16,8 @@
 - **思考中提示**: 当 AI 处理时间较长时显示"正在思考..."提示
 - **消息去重**: 自动过滤重复投递的消息
 - **灵活配置**: 支持命令行参数和环境变量两种配置方式
+
+
 
 ## 架构
 
@@ -116,8 +124,6 @@ go build -o moltbot-feishu .
    - 添加事件: `im.message.receive_v1`
 6. 发布应用版本
 
-
-飞书应用配置范例: [查看](https://my.feishu.cn/wiki/Hl17wUfSQizfSikXRc7c1xRzncb)
 
 ### 2. 配置 Moltbot
 
