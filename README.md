@@ -58,8 +58,8 @@
 # Linux/macOS 示例
 wget https://github.com/vogo/moltbot-feishu/releases/latest/download/moltbot-feishu-linux-amd64.tar.gz
 tar -xzf moltbot-feishu-linux-amd64.tar.gz
-chmod +x moltbot-feishu-linux-amd64
-./moltbot-feishu-linux-amd64 --version
+chmod +x moltbot-feishu
+./moltbot-feishu --version
 ```
 
 ### 方式二：从源码构建
@@ -321,28 +321,6 @@ go fmt ./...
 go vet ./...
 ```
 
-## 发布新版本
-
-本项目使用 GitHub Actions 自动构建和发布。有两种方式触发发布：
-
-### 方式一：手动触发（推荐）
-
-1. 进入 GitHub 仓库的 **Actions** 页面
-2. 选择 **Build and Release** workflow
-3. 点击 **Run workflow**
-4. 输入版本号（如 `v1.0.0`）
-5. 选择是否为预发布版本
-6. 点击 **Run workflow** 开始构建
-
-### 方式二：通过 Tag 触发
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-构建完成后，预编译的二进制文件将自动发布到 Releases 页面。
-
 ## 参考
 
 - [原 Node.js 实现](https://github.com/AlexAnys/feishu-moltbot-bridge)
@@ -351,4 +329,4 @@ git push origin v1.0.0
 
 ## 许可证
 
-MIT License
+Apache License 2.0

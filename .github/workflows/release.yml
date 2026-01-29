@@ -77,15 +77,16 @@ jobs:
           CGO_ENABLED: 0
         run: |
           VERSION=${{ steps.version.outputs.version }}
-          OUTPUT_NAME=moltbot-feishu-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+          BINARY_NAME=moltbot-feishu${{ matrix.ext }}
+          ARCHIVE_NAME=moltbot-feishu-${{ matrix.os }}-${{ matrix.arch }}
 
-          go build -ldflags="-s -w -X main.Version=${VERSION}" -o ${OUTPUT_NAME} .
+          go build -ldflags="-s -w -X main.Version=${VERSION}" -o ${BINARY_NAME} .
 
-          # 压缩
+          # 压缩 (归档内的二进制文件名为 moltbot-feishu)
           if [ "${{ matrix.os }}" = "windows" ]; then
-            zip ${OUTPUT_NAME%.exe}.zip ${OUTPUT_NAME}
+            zip ${ARCHIVE_NAME}.zip ${BINARY_NAME}
           else
-            tar -czvf ${OUTPUT_NAME}.tar.gz ${OUTPUT_NAME}
+            tar -czvf ${ARCHIVE_NAME}.tar.gz ${BINARY_NAME}
           fi
 
       - name: Upload artifact
@@ -162,11 +163,11 @@ jobs:
             ```bash
             # Linux/macOS
             tar -xzf moltbot-feishu-<os>-<arch>.tar.gz
-            chmod +x moltbot-feishu-<os>-<arch>
-            ./moltbot-feishu-<os>-<arch> --help
+            chmod +x moltbot-feishu
+            ./moltbot-feishu --help
 
             # Windows
-            # 解压 zip 文件后运行 moltbot-feishu-windows-<arch>.exe
+            # 解压 zip 文件后运行 moltbot-feishu.exe
             ```
 
             详细使用说明请参考 [README](https://github.com/${{ github.repository }}/blob/main/README.md)
