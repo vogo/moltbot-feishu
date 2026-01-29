@@ -62,6 +62,23 @@ chmod +x moltbot-feishu
 ./moltbot-feishu --version
 ```
 
+#### macOS 安全提示
+
+由于二进制文件未经 Apple 签名，macOS 可能会显示安全警告："Apple 无法验证此 App 是否包含恶意软件"。可通过以下方式解决：
+
+**方法一：移除隔离属性（推荐）**
+```bash
+xattr -d com.apple.quarantine moltbot-feishu
+```
+
+**方法二：系统设置**
+1. 打开 **系统设置** > **隐私与安全性**
+2. 滚动到底部，找到被阻止的应用
+3. 点击 **仍要打开**
+
+**方法三：右键打开**
+按住 `Control` 键点击应用，选择 **打开**，然后在弹窗中确认。
+
 ### 方式二：从源码构建
 
 需要 Go 1.21 或更高版本：
