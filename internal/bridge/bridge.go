@@ -30,12 +30,18 @@ func New(cfg *config.Config) *Bridge {
 }
 
 func (b *Bridge) Run(ctx context.Context) error {
-	// 连接 Moltbot Gateway
+	// 连接 Moltbot Gateway (10秒超时)
 	log.Printf("正在连接 Moltbot Gateway (ws://127.0.0.1:%d)...", b.cfg.GatewayPort)
-	if err := b.moltbotCli.Connect(ctx); err != nil {
+	connectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	err := b.moltbotCli.Connect(connectCtx)
+	cancel()
+	if err != nil {
 		return fmt.Errorf("连接 Moltbot Gateway 失败: %w", err)
 	}
 	log.Println("已连接 Moltbot Gateway")
+
+	// 确保退出时关闭连接
+	defer b.Close()
 
 	// 设置消息处理器
 	b.feishuCli.SetHandler(b.handleMessage)
@@ -43,6 +49,12 @@ func (b *Bridge) Run(ctx context.Context) error {
 	// 启动飞书客户端
 	log.Println("正在启动飞书桥接...")
 	return b.feishuCli.Start(ctx)
+}
+
+func (b *Bridge) Close() {
+	log.Println("正在关闭连接...")
+	b.feishuCli.Close()
+	b.moltbotCli.Close()
 }
 
 func (b *Bridge) handleMessage(ctx context.Context, chatID, text string) (string, error) {

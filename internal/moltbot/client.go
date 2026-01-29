@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"runtime"
 	"sync"
 	"time"
@@ -112,23 +113,30 @@ func NewClient(port int, token, agentID string) *Client {
 }
 
 func (c *Client) Connect(ctx context.Context) error {
-	c.connLock.Lock()
-	defer c.connLock.Unlock()
+	log.Printf("[Moltbot] 开始连接 Gateway: %s", c.gatewayURL)
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 10 * time.Second,
 	}
 
+	log.Printf("[Moltbot] 正在建立 WebSocket 连接...")
 	conn, _, err := dialer.DialContext(ctx, c.gatewayURL, nil)
 	if err != nil {
+		log.Printf("[Moltbot] WebSocket 连接失败: %v", err)
 		return fmt.Errorf("连接 Gateway 失败: %w", err)
 	}
+
+	// 只在设置 conn 时加锁
+	c.connLock.Lock()
 	c.conn = conn
+	c.connLock.Unlock()
+	log.Printf("[Moltbot] WebSocket 连接已建立")
 
 	// 启动消息读取协程
 	go c.readLoop()
 
 	// 等待 connect.challenge
+	log.Printf("[Moltbot] 等待 Gateway 握手 (connect.challenge)...")
 	challengeCh := make(chan struct{}, 1)
 	c.OnEvent("connect.challenge", func(_ json.RawMessage) {
 		challengeCh <- struct{}{}
@@ -136,15 +144,19 @@ func (c *Client) Connect(ctx context.Context) error {
 
 	select {
 	case <-challengeCh:
+		log.Printf("[Moltbot] 收到握手请求")
 	case <-time.After(5 * time.Second):
+		log.Printf("[Moltbot] 握手超时 (5秒)")
 		conn.Close()
 		return fmt.Errorf("等待 Gateway 握手超时")
 	case <-ctx.Done():
+		log.Printf("[Moltbot] 连接被取消")
 		conn.Close()
 		return ctx.Err()
 	}
 
 	// 发送认证请求
+	log.Printf("[Moltbot] 发送认证请求 (protocol=%d, role=operator)...", ProtocolVersion)
 	platform := runtime.GOOS
 	params := ConnectParams{
 		MinProtocol: ProtocolVersion,
@@ -164,6 +176,7 @@ func (c *Client) Connect(ctx context.Context) error {
 
 	resp, err := c.sendRequest(ctx, "connect", "connect", params)
 	if err != nil {
+		log.Printf("[Moltbot] 认证请求失败: %v", err)
 		conn.Close()
 		return fmt.Errorf("认证失败: %w", err)
 	}
@@ -173,9 +186,11 @@ func (c *Client) Connect(ctx context.Context) error {
 		if resp.Error != nil {
 			errMsg = resp.Error.Message
 		}
+		log.Printf("[Moltbot] 认证被拒绝: %s", errMsg)
 		return fmt.Errorf("认证被拒绝: %s", errMsg)
 	}
 
+	log.Printf("[Moltbot] 认证成功, 连接就绪")
 	return nil
 }
 

@@ -69,14 +69,19 @@ func (c *Client) Start(ctx context.Context) error {
 		return c.handleMessage(ctx, event)
 	})
 
+	// 注意: SDK 没有 Stop 方法, 依赖 context 取消来退出
+	// 禁用 AutoReconnect 以便 context 取消时能快速退出
 	wsClient := larkws.NewClient(c.appID, c.appSecret,
 		larkws.WithEventHandler(eventDispatcher),
 		larkws.WithLogLevel(larkcore.LogLevelInfo),
-		larkws.WithAutoReconnect(true),
 	)
 
 	log.Println("正在连接飞书 WebSocket...")
 	return wsClient.Start(ctx)
+}
+
+func (c *Client) Close() {
+	// 飞书 SDK 没有 Stop 方法, 依赖 context 取消
 }
 
 func (c *Client) handleMessage(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
